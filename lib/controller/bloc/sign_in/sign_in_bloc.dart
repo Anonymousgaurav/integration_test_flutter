@@ -1,0 +1,37 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:integration_test_flutter/controller/bloc/sign_in/sign_in_event.dart';
+import 'package:integration_test_flutter/controller/bloc/sign_in/sign_in_state.dart';
+
+
+import '../../../model/error_model.dart';
+import '../../../model/sign_in_model.dart';
+import '../../../model/user_model.dart';
+import '../../repo/repo.dart';
+
+class SignInBloc extends Bloc<SignInEvent, SignInState> {
+  final Repo repo;
+  SignInBloc(this.repo) : super(SignInInitial()) {
+    on<GetSignInCredential>((event, emit) async {
+      SignInModel? signCredentials = await repo.getSignInDetails();
+      if (signCredentials != null) {
+        emit(GetSignInCredentialSuccess(signCredentials));
+      }
+    });
+    on<SignIn>((event, emit) async {
+      UserModel? user = await repo.getUserDetails(event.signInModel.userName);
+      if (user != null) {
+        if (user.password == event.signInModel.password) {
+          await repo.saveSignInDetails(event.signInModel);
+          emit(SignInSuccess(user));
+        } else {
+          emit(SignInFailed(const ErrorModel(
+              title: 'Sign In Failed',
+              description: 'Please enter the correct password')));
+        }
+      } else {
+        emit(SignInFailed(const ErrorModel(
+            title: 'Sign In Failed', description: 'User not found')));
+      }
+    });
+  }
+}
